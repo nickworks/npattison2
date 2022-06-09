@@ -1,0 +1,32 @@
+name: deploy
+
+on:
+  push:
+    branches: [ "deploy" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+            ref: deploy
+
+      - name: Load SSH Key
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+            ssh-private-key: ${{ secrets.SSHKEY }}
+            
+      - name: Deploy
+        run: rsync -rvz --delete-after --exclude={"/public/.well-known","/node_modules/","/.git/","/.github/",".env","/storage/"} -e "ssh -o StrictHostKeyChecking=no" ./ ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/var/www/html/
+
+      - name: Post Deploy
+        uses: appleboy/ssh-action@master
+        with:
+            host: ${{ secrets.HOST }}
+            USERNAME: ${{ secrets.USERNAME }}
+            PORT: ${{ secrets.PORT }}
+            KEY: ${{ secrets.SSHKEY }}
+            script: cd /var/www/html/ && composer update
+
